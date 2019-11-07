@@ -1,0 +1,15 @@
+[package]
+name = "cirtrace"
+version = "0.1.0"
+authors = ["<versbinarii@gmail.com>"]
+edition = "2018"
+description = "Tool for debugging and tracinf VoIP call on a Cirpack platform"
+license = "MIT"
+readme = "README.md"
+keywords=["tool", "tracing", "cirpack", "cli-tool"]
+repository = "https://github.com/VersBinarii/cirtrace"
+
+[dependencies]
+ssh2 = "0.5.0"
+clap = "2.33.0"
+ctrlc = "3.1.3"
