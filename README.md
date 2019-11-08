@@ -19,7 +19,7 @@ The diference between `-M` and `-m` is that `-M` refers to the process instance 
 ## Installation
 
 ``` shell
-cargo install cirtracing
+cargo install cirtrace
 ```
 
 ## Usage
