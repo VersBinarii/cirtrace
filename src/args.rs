@@ -1,4 +1,4 @@
-use clap::{App, Arg, ArgMatches, SubCommand};
+use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 
 pub fn get_args<'a>() -> ArgMatches<'a> {
     let host = Arg::with_name("host")
@@ -69,6 +69,10 @@ pub fn get_args<'a>() -> ArgMatches<'a> {
 
     let sip_command = SubCommand::with_name("sip")
         .help("Prints raw captured SIP packets.")
+        .settings(&[
+            AppSettings::ArgRequiredElseHelp,
+            AppSettings::UnifiedHelpMessage,
+        ])
         .arg(search_term.clone());
 
     let trace_command = SubCommand::with_name("trace")
