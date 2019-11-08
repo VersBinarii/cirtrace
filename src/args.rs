@@ -6,9 +6,12 @@ pub fn get_args<'a>() -> ArgMatches<'a> {
         .help("SBC host to connect.")
         .takes_value(true);
 
-    let ip = Arg::with_name("ip")
+    let search_term = Arg::with_name("search-term")
         .required(false)
-        .help("Trace based on IP address")
+        .multiple(true)
+        .long("search-term")
+        .short("S")
+        .help("Filter trace based on this term. Can be phone number or IP.")
         .takes_value(true);
 
     let username = Arg::with_name("username")
@@ -57,13 +60,20 @@ pub fn get_args<'a>() -> ArgMatches<'a> {
         .help("Process instance")
         .takes_value(true);
 
+    let output_file = Arg::with_name("output-file")
+        .required(false)
+        .short("o")
+        .long("output-file")
+        .help("Path location to store the output.")
+        .takes_value(true);
+
     let sip_command = SubCommand::with_name("sip")
         .help("Prints raw captured SIP packets.")
-        .arg(ip.clone());
+        .arg(search_term.clone());
 
     let trace_command = SubCommand::with_name("trace")
         .help("Prints full trace.")
-        .arg(ip);
+        .arg(search_term);
 
     App::new("cir_trace")
         .version("0.1")
@@ -76,6 +86,7 @@ pub fn get_args<'a>() -> ArgMatches<'a> {
         .arg(process)
         .arg(process_name)
         .arg(instance)
+        .arg(output_file)
         .subcommand(sip_command)
         .subcommand(trace_command)
         .get_matches()

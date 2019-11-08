@@ -9,6 +9,7 @@ use error::TraceResult;
 
 mod args;
 mod error;
+mod sip_parse;
 mod ssh;
 
 fn main() -> TraceResult<()> {
@@ -18,8 +19,11 @@ fn main() -> TraceResult<()> {
     let host = host.parse().expect("Failed to parse the IP address");
     let username = matches.value_of("username").unwrap_or("omni");
     let password = matches.value_of("password").unwrap();
-    let timeout: u32 =
-        matches.value_of("timeout").unwrap_or("15").parse().unwrap();
+    let timeout: u32 = matches
+        .value_of("trace-time")
+        .unwrap_or("15")
+        .parse()
+        .unwrap();
     let process = matches.value_of("module");
     let process_name = matches.value_of("module-name");
     let instance = matches.value_of("instance");
@@ -38,7 +42,7 @@ fn main() -> TraceResult<()> {
     };
 
     let pandi = find_process_and_instance(&ps_out);
-    println!("{:?}", pandi);
+
     // Connect to node and set up the debugging
     match pandi {
         (Some(ref p), _, Some(i)) => {
@@ -73,10 +77,26 @@ fn main() -> TraceResult<()> {
     ))?;
 
     println!("Disabled debugging");
-    println!("{}", trace_output);
 
-    // We have a full trace now so we can now
-    // extract interesting stuf from it
+    match matches.subcommand() {
+        ("sip", Some(s_match)) => {
+            let search_terms: Vec<_> =
+                if s_match.occurrences_of("search-term") > 0 {
+                    s_match.values_of("search-term").unwrap().collect()
+                } else {
+                    vec![]
+                };
+            // We have a full trace now so we can now
+            // extract interesting stuf from it
+            let sip_parser = sip_parse::SipParser::new();
+            let sip_packets =
+                sip_parser.extract_sip(&trace_output, &search_terms, true);
+            for p in sip_packets.iter() {
+                println!("{}", p);
+            }
+        }
+        _ => println!("{}", "Not supported yet"),
+    };
 
     Ok(())
 }
@@ -87,8 +107,9 @@ fn find_process_and_instance(
 ) -> (Option<String>, Option<String>, Option<u32>) {
     // Extract the process from this:
     // omni     28848  0.0  8.6 770804 714432 ?       Sl    2018   0:50 /home/omni/bin/ibcf -i1 -ribcf_core -f/home/etc/ibcf_core.cfg -tpip=254
-    let process = if let Some(idx1) = s.find("/home") {
-        if let Some(idx2) = s[idx1..].find(" ") {
+
+    let process = if let Some(idx1) = s.find(" /home") {
+        if let Some(idx2) = s[idx1..].find(" -i") {
             if let Some(p) = s.get(idx1..idx1 + idx2) {
                 p.split("/").into_iter().last().map(|s| s.to_owned())
             } else {
