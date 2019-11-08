@@ -1,11 +1,11 @@
+use error::{Error, TraceResult};
 use std::{
     io::{self, Write},
     net::{IpAddr, SocketAddr},
+    path::Path,
     thread,
     time::{Duration, Instant},
 };
-
-use error::TraceResult;
 
 mod args;
 mod error;
@@ -95,12 +95,43 @@ fn main() -> TraceResult<()> {
             let sip_parser = sip_parse::SipParser::new();
             let sip_packets =
                 sip_parser.extract_sip(&trace_output, &search_terms, true);
+
+            if matches.is_present("output-file") {
+                let out_file = matches.value_of("output-file").unwrap();
+                save_output_locally(&sip_packets, out_file)?;
+            }
+
             for p in sip_packets.iter() {
                 println!("{}", p);
             }
         }
         _ => println!("{}", "Not supported yet"),
     };
+
+    Ok(())
+}
+
+fn save_output_locally<T: std::fmt::Display, P: AsRef<Path> + Copy>(
+    to_save: &[T],
+    filepath: P,
+) -> TraceResult<()> {
+    use std::fs::OpenOptions;
+    use std::io::BufWriter;
+
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(filepath)
+        .map_err(|e| Error::File(e, filepath.as_ref().to_path_buf()))?;
+
+    let mut writer = BufWriter::new(file);
+
+    for p in to_save.iter() {
+        let _ = writer
+            .write(p.to_string().as_bytes())
+            .map_err(Error::Write)?;
+    }
 
     Ok(())
 }
