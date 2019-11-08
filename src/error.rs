@@ -6,6 +6,8 @@ pub enum Error {
     SshHandshake(ssh2::Error),
     SshAuthentication(ssh2::Error),
     Command(ssh2::Error, String),
+    File(std::io::Error, std::path::PathBuf),
+    Write(std::io::Error),
 }
 
 pub type TraceResult<T, E = Error> = std::result::Result<T, E>;
@@ -30,6 +32,15 @@ impl std::fmt::Display for Error {
             }
             Error::Command(e, cmd) => {
                 write!(f, "Failed to execute command: {}. Error: {}", cmd, e)
+            }
+            Error::File(e, path) => write!(
+                f,
+                "Failed to open file [{}]. Error: {}",
+                path.display(),
+                e
+            ),
+            Error::Write(e) => {
+                write!(f, "Failed to write to file. Error: {}", e)
             }
         }
     }
