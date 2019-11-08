@@ -59,7 +59,6 @@ fn main() -> TraceResult<()> {
 
     // Get th time on remote system to the nearest minute
     let remote_time = ssh.send_cmd("date \"+%H:%M\"")?;
-    println!("Remote time {}", remote_time);
 
     wait(Duration::from_secs(timeout as u64));
 
@@ -72,7 +71,8 @@ fn main() -> TraceResult<()> {
 
     // Tail the trace file only from the moment we started the test
 
-    let trace_output = ssh.send_cmd(&format!("tail -n +$(grep -m 1 -n {1} /home/log/{0}.1 | cut -d':' -f 1) /home/log/{0}.1", pn, remote_time.trim()))?;
+    let trace_output = ssh.send_cmd(
+        &format!("tail -n +$(grep -m 1 -n {1} /home/log/{0}.1 | cut -d':' -f 1) /home/log/{0}.1", pn, remote_time.trim()))?;
 
     let _ = ssh.send_cmd(&format!(
         "mgt_cscf -name={} -i{} -debug=0 -loglevel=1",
@@ -144,7 +144,7 @@ fn find_process_and_instance(
     let instance = if let Some(idx1) = s.find("-i") {
         if let Some(idx2) = s[idx1..].find(" ") {
             if let Some(p) = s.get(idx1..idx1 + idx2) {
-                // Just skip the -r
+                // Just skip the -i
                 Some(p[2..].to_owned().parse::<u32>().unwrap())
             } else {
                 None
@@ -159,7 +159,6 @@ fn find_process_and_instance(
     (process, process_name, instance)
 }
 
-#[allow(dead_code)]
 fn wait(wait_time: Duration) {
     let stdout = io::stdout();
     let mut handle = io::BufWriter::new(stdout);

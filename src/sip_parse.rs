@@ -27,20 +27,25 @@ impl std::fmt::Display for SipPacket {
 }
 
 #[derive(Debug)]
-pub struct SipHeader(Vec<String>);
+struct SipHeader(Vec<String>);
 
 impl SipHeader {
     fn add_header(&mut self, header: String) {
         self.0.push(header)
     }
+
+    fn get_call_id(&self) -> Option<&String> {
+        self.0.iter().find(|&h| h.starts_with("Call-ID"))
+    }
 }
 
 #[derive(Debug)]
-pub struct Sdp(Vec<String>);
+struct Sdp(Vec<String>);
 
 #[derive(Debug)]
 enum SipParseState {
     Idle,
+    InviteSipParse(SipHeader),
     SipParse(SipHeader),
     SdpParse(SipHeader, Sdp),
     Done(SipPacket),
@@ -67,31 +72,53 @@ impl SipParser {
 
         println!("Searching for {:?} terms in SIP packets", term);
         let mut packets = Vec::new();
+        let mut current_call_id: Option<String> = None;
+
         for line in trace.lines() {
             let state = match self.state {
                 Idle => {
                     if line.contains("SIP/2.0") {
-                        SipParse(SipHeader(vec![line.to_owned()]))
+                        if line.starts_with("INVITE") {
+                            InviteSipParse(SipHeader(vec![line.to_owned()]))
+                        } else {
+                            SipParse(SipHeader(vec![line.to_owned()]))
+                        }
                     } else {
                         Idle
                     }
                 }
-
-                SipParse(mut h) => {
+                InviteSipParse(mut h) => {
                     if line.is_empty() {
-                        // Here we should have a full SipPacket
+                        // Here we should have a full INVITE SipPacket
                         // Lets see if it matches the search terms
                         // If not we go back to Idle state
                         if h.0
                             .iter()
                             .any(|h| term.iter().any(|t| h.contains(t)))
                         {
+                            current_call_id = h.get_call_id().cloned();
                             SdpParse(h, Sdp(Vec::new()))
                         } else {
                             Idle
                         }
                     } else {
-                        h.0.push(line.to_owned());
+                        h.add_header(line.to_owned());
+                        InviteSipParse(h)
+                    }
+                }
+                SipParse(mut h) => {
+                    if line.is_empty() {
+                        // If the call-id corressponds to
+                        // what we're currently looking for
+                        // then continue otherwise lets skip this one
+                        // and look for new packet
+                        if current_call_id.as_ref() == h.get_call_id() {
+                            SdpParse(h, Sdp(Vec::new()))
+                        } else {
+                            Idle
+                        }
+                    } else {
+                        h.add_header(line.to_owned());
                         SipParse(h)
                     }
                 }
