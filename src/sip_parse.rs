@@ -20,6 +20,7 @@ impl std::fmt::Display for SipPacket {
             for s in sdp.0.iter() {
                 let _ = write!(f, "{}\n", s);
             }
+            let _ = write!(f, "\n");
         }
 
         Ok(())
