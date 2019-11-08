@@ -1,9 +1,9 @@
 [package]
 name = "cirtrace"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Kris <versbinarii@gmail.com>"]
 edition = "2018"
-description = "Tool for debugging and tracinf VoIP call on a Cirpack platform"
+description = "Tool for debugging and tracing VoIP call on a Cirpack platform"
 license = "MIT"
 readme = "README.md"
 keywords=["tool", "tracing", "cirpack", "cli-tool"]
