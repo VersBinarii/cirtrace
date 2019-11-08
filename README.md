@@ -54,3 +54,6 @@ SUBCOMMANDS:
     sip
     trace
 ```
+
+## Bugs
+Any issues can be reported at the [repo](https://github.com/VersBinarii/cirtrace/issues)
