@@ -42,7 +42,6 @@ fn main() -> TraceResult<()> {
     };
 
     let pandi = find_process_and_instance(&ps_out);
-
     // Connect to node and set up the debugging
     match pandi {
         (Some(ref p), _, Some(i)) => {
@@ -58,6 +57,10 @@ fn main() -> TraceResult<()> {
         }
     }
 
+    // Get th time on remote system to the nearest minute
+    let remote_time = ssh.send_cmd("date \"+%H:%M\"")?;
+    println!("Remote time {}", remote_time);
+
     wait(Duration::from_secs(timeout as u64));
 
     let pn = match pandi {
@@ -66,9 +69,10 @@ fn main() -> TraceResult<()> {
         (Some(_), Some(ref pn), _) => pn,
         _ => unreachable!(),
     };
-    let trace_output = ssh.send_cmd(&format!("cat /home/log/{}.1", pn))?;
 
-    println!("Capturing trace output");
+    // Tail the trace file only from the moment we started the test
+
+    let trace_output = ssh.send_cmd(&format!("tail -n +$(grep -m 1 -n {1} /home/log/{0}.1 | cut -d':' -f 1) /home/log/{0}.1", pn, remote_time.trim()))?;
 
     let _ = ssh.send_cmd(&format!(
         "mgt_cscf -name={} -i{} -debug=0 -loglevel=1",

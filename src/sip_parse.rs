@@ -14,7 +14,9 @@ impl std::fmt::Display for SipPacket {
         for h in self.header.0.iter() {
             let _ = write!(f, "{}\n", h);
         }
+
         if let Some(sdp) = &self.sdp {
+            let _ = write!(f, "\n");
             for s in sdp.0.iter() {
                 let _ = write!(f, "{}\n", s);
             }
@@ -26,6 +28,12 @@ impl std::fmt::Display for SipPacket {
 
 #[derive(Debug)]
 pub struct SipHeader(Vec<String>);
+
+impl SipHeader {
+    fn add_header(&mut self, header: String) {
+        self.0.push(header)
+    }
+}
 
 #[derive(Debug)]
 pub struct Sdp(Vec<String>);
@@ -57,6 +65,7 @@ impl SipParser {
     ) -> Vec<SipPacket> {
         use SipParseState::*;
 
+        println!("Searching for {:?} terms in SIP packets", term);
         let mut packets = Vec::new();
         for line in trace.lines() {
             let state = match self.state {
@@ -67,6 +76,7 @@ impl SipParser {
                         Idle
                     }
                 }
+
                 SipParse(mut h) => {
                     if line.is_empty() {
                         // Here we should have a full SipPacket

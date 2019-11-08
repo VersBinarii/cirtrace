@@ -10,7 +10,7 @@ It logs to the specified host using SSH and enables the debug for the specified 
 You can specify a search term after the subcommand to display trace only for things that match the term:
 
 ``` shell
-cirtrace 192.168.1.100 -T 20 -p omni -M ibcf_border sip -S <phone_number>
+cirtrace 192.168.1.100 -T 20 -p omni -M ibcf_border sip -S <search_term>
 ```
 
 The diference between `-M` and `-m` is that `-M` refers to the process instance while `-m` to the process name: i.e. ibcf or bgcf. You need to pass in `-i` with `-m`.
