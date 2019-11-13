@@ -53,7 +53,7 @@ impl SshClient {
     pub fn send_cmds(&mut self, commands: &[&str]) -> TraceResult<String> {
         use std::io::{Read, Write};
 
-        let mut out = String::new();
+        let mut out = Vec::new();
         let mut channel = self
             .ssh_session
             .channel_session()
@@ -67,17 +67,18 @@ impl SshClient {
         channel.send_eof().map_err(Error::SshChannel)?;
 
         while !channel.eof() {
-            if let Err(e) = channel.read_to_string(&mut out) {
-                println!("{}", e)
-            }
+            channel
+                .read_to_end(&mut out)
+                .map_err(Error::SshConnection)?;
         }
-        Ok(out)
+
+        Ok(String::from_utf8_lossy(&out).to_string())
     }
 
     pub fn send_cmd(&mut self, command: &str) -> TraceResult<String> {
         use std::io::Read;
 
-        let mut out = String::new();
+        let mut out = Vec::new();
         let mut channel = self
             .ssh_session
             .channel_session()
@@ -90,9 +91,9 @@ impl SshClient {
 
         while !channel.eof() {
             channel
-                .read_to_string(&mut out)
+                .read_to_end(&mut out)
                 .map_err(Error::SshConnection)?;
         }
-        Ok(out)
+        Ok(String::from_utf8_lossy(&out).to_string())
     }
 }
