@@ -42,6 +42,7 @@ fn main() -> TraceResult<()> {
     };
 
     let pandi = find_process_and_instance(&ps_out);
+
     // Connect to node and set up the debugging
     match pandi {
         (Some(ref p), _, Some(i)) => {
@@ -70,7 +71,6 @@ fn main() -> TraceResult<()> {
     };
 
     // Tail the trace file only from the moment we started the test
-
     let trace_output = ssh.send_cmd(
         &format!("tail -n +$(grep -m 1 -n {1} /home/log/{0}.1 | cut -d':' -f 1) /home/log/{0}.1", pn, remote_time.trim()))?;
 
