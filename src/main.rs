@@ -1,13 +1,13 @@
 use error::{Error, TraceResult};
 use std::{
     io::{self, Write},
-    net::{IpAddr, SocketAddr},
     path::Path,
     thread,
     time::{Duration, Instant},
 };
 
 mod args;
+mod commands;
 mod error;
 mod sip_parse;
 mod ssh;
@@ -16,7 +16,6 @@ fn main() -> TraceResult<()> {
     let matches = args::get_args();
 
     let host = matches.value_of("host").unwrap();
-    let host = host.parse().expect("Failed to parse the IP address");
     let username = matches.value_of("username").unwrap_or("omni");
     let password = matches.value_of("password").unwrap();
     let timeout: u32 = matches
@@ -28,16 +27,11 @@ fn main() -> TraceResult<()> {
     let process_name = matches.value_of("module-name");
     let instance = matches.value_of("instance");
 
-    let socket = SocketAddr::new(IpAddr::V4(host), 22);
-    let mut ssh = ssh::SshClient::connect(socket, username, password)?;
+    let cmd = commands::CommandRunner::new(host, username, password)?;
 
     let ps_out = match (process, process_name, instance) {
-        (None, Some(pn), None) => {
-            ssh.send_cmd(&format!("ps aux | grep {}", pn))?
-        }
-        (Some(p), None, Some(i)) => {
-            ssh.send_cmd(&format!("ps aux | grep {} | grep i{}", p, i))?
-        }
+        (None, Some(pn), None) => cmd.get_ps_list(&[pn])?,
+        (Some(p), None, Some(i)) => cmd.get_ps_list(&[p, i])?,
         _ => unreachable!(),
     };
 
@@ -45,11 +39,8 @@ fn main() -> TraceResult<()> {
 
     // Connect to node and set up the debugging
     match pandi {
-        (Some(ref p), _, Some(i)) => {
-            let _ = ssh.send_cmd(&format!(
-                "mgt_cscf -name={} -i{} -debug=3 -loglevel=0",
-                p, i
-            ))?;
+        (Some(ref p), _, Some(ref i)) => {
+            cmd.enable_debug(p, i)?;
             println!("Enabled debug mode");
         }
         _ => {
@@ -59,7 +50,7 @@ fn main() -> TraceResult<()> {
     }
 
     // Get th time on remote system to the nearest minute
-    let remote_time = ssh.send_cmd("date \"+%H:%M\"")?;
+    let remote_time = cmd.get_remote_time()?;
 
     wait(Duration::from_secs(timeout as u64));
 
@@ -71,14 +62,9 @@ fn main() -> TraceResult<()> {
     };
 
     // Tail the trace file only from the moment we started the test
-    let trace_output = ssh.send_cmd(
-        &format!("tail -n +$(grep -m 1 -n {1} /home/log/{0}.1 | cut -d':' -f 1) /home/log/{0}.1", pn, remote_time.trim()))?;
+    let trace_output = cmd.get_trace(pn, &remote_time)?;
 
-    let _ = ssh.send_cmd(&format!(
-        "mgt_cscf -name={} -i{} -debug=0 -loglevel=1",
-        pandi.0.unwrap(),
-        pandi.2.unwrap()
-    ))?;
+    cmd.disable_debug(&pandi.0.unwrap(), &pandi.2.unwrap())?;
 
     println!("Disabled debugging");
 
@@ -139,7 +125,7 @@ fn save_output_locally<T: std::fmt::Display, P: AsRef<Path> + Copy>(
 /// This should find ("process", "process-name", "instance number")
 fn find_process_and_instance(
     s: &str,
-) -> (Option<String>, Option<String>, Option<u32>) {
+) -> (Option<String>, Option<String>, Option<String>) {
     // Extract the process from this:
     // omni     28848  0.0  8.6 770804 714432 ?       Sl    2018   0:50 /home/omni/bin/ibcf -i1 -ribcf_core -f/home/etc/ibcf_core.cfg -tpip=254
 
@@ -176,7 +162,7 @@ fn find_process_and_instance(
         if let Some(idx2) = s[idx1..].find(" ") {
             if let Some(p) = s.get(idx1..idx1 + idx2) {
                 // Just skip the -i
-                Some(p[2..].to_owned().parse::<u32>().unwrap())
+                Some(p[2..].to_owned())
             } else {
                 None
             }
