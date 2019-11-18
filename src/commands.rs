@@ -39,11 +39,13 @@ impl CommandRunner {
     }
 
     pub fn get_ps_list(&self, greps: &[&str]) -> TraceResult<String> {
-        let mut ps_command = String::from("ps aux | ");
+        let mut ps_command = String::from("ps aux |");
 
         for g in greps.iter() {
-            ps_command.push_str(&format!("grep {}", g));
+            ps_command.push_str(&format!("grep {} |", g));
         }
+        // remove last "|"
+        ps_command.pop();
 
         Ok(self.0.borrow_mut().send_cmd(&ps_command)?)
     }

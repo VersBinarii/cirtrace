@@ -31,7 +31,9 @@ fn main() -> TraceResult<()> {
 
     let ps_out = match (process, process_name, instance) {
         (None, Some(pn), None) => cmd.get_ps_list(&[pn])?,
-        (Some(p), None, Some(i)) => cmd.get_ps_list(&[p, i])?,
+        (Some(p), None, Some(i)) => {
+            cmd.get_ps_list(&[p, &format!("i{}", i)])?
+        }
         _ => unreachable!(),
     };
 
@@ -40,11 +42,13 @@ fn main() -> TraceResult<()> {
     // Connect to node and set up the debugging
     match pandi {
         (Some(ref p), _, Some(ref i)) => {
-            cmd.enable_debug(p, i)?;
-            println!("Enabled debug mode");
+            cmd.enable_debug(p, i).and_then(|_| {
+                println!("Enabled debug mode");
+                Ok(())
+            })?;
         }
         _ => {
-            println!("Could not find proces and instance to match on.");
+            eprintln!("Could not find proces and instance to match on.");
             std::process::exit(1)
         }
     }
@@ -64,9 +68,11 @@ fn main() -> TraceResult<()> {
     // Tail the trace file only from the moment we started the test
     let trace_output = cmd.get_trace(pn, &remote_time)?;
 
-    cmd.disable_debug(&pandi.0.unwrap(), &pandi.2.unwrap())?;
-
-    println!("Disabled debugging");
+    cmd.disable_debug(&pandi.0.unwrap(), &pandi.2.unwrap())
+        .and_then(|_| {
+            println!("Disabled debugging");
+            Ok(())
+        })?;
 
     match matches.subcommand() {
         ("sip", Some(s_match)) => {
