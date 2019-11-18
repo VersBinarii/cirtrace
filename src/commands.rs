@@ -3,6 +3,16 @@ use crate::ssh::SshClient;
 use std::cell::RefCell;
 use std::net::{IpAddr, SocketAddr};
 
+const CIRPACK_PROCESSES: &[&str] = &[
+    "ibcf",
+    "bgcf",
+    "gw_sip",
+    "imstscfg",
+    "hactrl",
+    "stup",
+    "s7pnumcfg",
+];
+
 pub struct CommandRunner(RefCell<SshClient>);
 
 impl CommandRunner {
@@ -58,4 +68,6 @@ impl CommandRunner {
         Ok(self.0.borrow_mut().send_cmd(
         &format!("tail -n +$(grep -m 1 -n {1} /home/log/{0}.1 | cut -d':' -f 1) /home/log/{0}.1", process_name, start_time))?)
     }
+
+    //    pub fn show_status() -> TraceResult<String> {}
 }
