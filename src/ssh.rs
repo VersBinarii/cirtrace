@@ -7,12 +7,12 @@ use std::{
 
 const TIMEOUT: Duration = Duration::from_secs(5);
 
-pub struct SshClient {
+pub(crate) struct SshClient {
     ssh_session: ssh2::Session,
 }
 
 impl SshClient {
-    pub fn connect(
+    pub(crate) fn connect(
         addr: SocketAddr,
         username: &str,
         password: &str,
@@ -50,7 +50,10 @@ impl SshClient {
     }
 
     #[allow(dead_code)]
-    pub fn send_cmds(&mut self, commands: &[&str]) -> TraceResult<String> {
+    pub(crate) fn send_cmds(
+        &mut self,
+        commands: &[&str],
+    ) -> TraceResult<String> {
         use std::io::{Read, Write};
 
         let mut out = Vec::new();
@@ -75,7 +78,7 @@ impl SshClient {
         Ok(String::from_utf8_lossy(&out).to_string())
     }
 
-    pub fn send_cmd(&mut self, command: &str) -> TraceResult<String> {
+    pub(crate) fn send_cmd(&mut self, command: &str) -> TraceResult<String> {
         use std::io::Read;
 
         let mut out = Vec::new();
