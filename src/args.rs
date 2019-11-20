@@ -49,6 +49,7 @@ pub fn get_args<'a>() -> ArgMatches<'a> {
         .short("M")
         .long("module-name")
         .required_unless_all(&["module", "instance"])
+        .required_unless("status")
         .help("The name of the module instance.")
         .takes_value(true);
 
@@ -79,6 +80,8 @@ pub fn get_args<'a>() -> ArgMatches<'a> {
         .help("Prints full trace.")
         .arg(search_term);
 
+    let status = SubCommand::with_name("status").help("Show remote host info.");
+
     App::new("cir_trace")
         .version("0.1")
         .author("versbinarii <versbinarii@gmail.com>")
@@ -93,5 +96,7 @@ pub fn get_args<'a>() -> ArgMatches<'a> {
         .arg(output_file)
         .subcommand(sip_command)
         .subcommand(trace_command)
+        .subcommand(status)
+        .setting(AppSettings::SubcommandsNegateReqs)
         .get_matches()
 }

@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 use error::{Error, TraceResult};
 use std::{
     io::{self, Write},
@@ -34,7 +37,8 @@ fn main() -> TraceResult<()> {
         (Some(p), None, Some(i)) => {
             cmd.get_ps_list(&[p, &format!("i{}", i)])?
         }
-        _ => unreachable!(),
+        (Some(p), None, None) => cmd.get_ps_list(&[p])?,
+        _ => String::new(),
     };
 
     let pandi = find_process_and_instance(&ps_out);
@@ -47,32 +51,33 @@ fn main() -> TraceResult<()> {
                 Ok(())
             })?;
         }
-        _ => {
-            eprintln!("Could not find proces and instance to match on.");
-            std::process::exit(1)
-        }
+        _ => {}
     }
 
     // Get th time on remote system to the nearest minute
     let remote_time = cmd.get_remote_time()?;
 
-    wait(Duration::from_secs(timeout as u64));
-
     let pn = match pandi {
-        (Some(ref p), None, _) => p,
-        (None, Some(ref pn), _) => pn,
-        (Some(_), Some(ref pn), _) => pn,
-        _ => unreachable!(),
+        (Some(ref p), None, _) => Some(p),
+        (None, Some(ref pn), _) => Some(pn),
+        (Some(_), Some(ref pn), _) => Some(pn),
+        _ => None,
     };
 
-    // Tail the trace file only from the moment we started the test
-    let trace_output = cmd.get_trace(pn, &remote_time)?;
-
-    cmd.disable_debug(&pandi.0.unwrap(), &pandi.2.unwrap())
-        .and_then(|_| {
-            println!("Disabled debugging");
-            Ok(())
-        })?;
+    let trace_output = match pn {
+        // Tail the trace file only from the moment we started the test
+        Some(proc_name) => {
+            wait(Duration::from_secs(timeout as u64));
+            let trace_out = cmd.get_trace(&proc_name, &remote_time)?;
+            cmd.disable_debug(&pandi.0.unwrap(), &pandi.2.unwrap())
+                .and_then(|_| {
+                    println!("Disabled debugging");
+                    Ok(())
+                })?;
+            trace_out
+        }
+        None => "".to_string(),
+    };
 
     match matches.subcommand() {
         ("sip", Some(s_match)) => {
@@ -96,6 +101,9 @@ fn main() -> TraceResult<()> {
             for p in sip_packets.iter() {
                 println!("{}", p);
             }
+        }
+        ("status", _) => {
+            let _ = cmd.show_status();
         }
         _ => println!("{}", "Not supported yet"),
     };
